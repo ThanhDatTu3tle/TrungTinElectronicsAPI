@@ -32,8 +32,8 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = false, // vài bữa deploy thì set lại là true
-        ValidateAudience = false, // vài bữa deploy thì set lại là true
+        ValidateIssuer = true, // vài bữa deploy thì set lại là true
+        ValidateAudience = true, // vài bữa deploy thì set lại là true
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
@@ -91,7 +91,8 @@ builder.Services.AddCors(options =>
                 .WithOrigins(
                     "http://localhost:4200",        // Angular
                     "https://localhost:5225",       // Swagger HTTPS
-                    "http://localhost:5225"         // Swagger HTTP (nếu có)
+                    "http://localhost:5225",         // Swagger HTTP (nếu có)
+                    "http://45.119.82.33"
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod();
