@@ -92,7 +92,9 @@ builder.Services.AddCors(options =>
                     "http://localhost:4200",        // Angular
                     "https://localhost:5225",       // Swagger HTTPS
                     "http://localhost:5225",         // Swagger HTTP (nếu có)
-                    "http://45.119.82.33"
+                    "http://45.119.82.33",
+                    "http://trungtinelectronics.com",
+                    "https://trungtinelectronics.com"
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod();
