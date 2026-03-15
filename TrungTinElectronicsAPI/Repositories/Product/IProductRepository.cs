@@ -11,7 +11,8 @@ public interface IProductRepository
         decimal? minPrice = null,
         decimal? maxPrice = null,
         bool? isNew = null,
-        bool? isFeatured = null
+        bool? isFeatured = null,
+        bool? isSpotlight = null
     );
 
     // Lấy ra thông tin chi tiết từng sản phẩm
@@ -32,6 +33,7 @@ public interface IProductRepository
         string? brand = null,
         int stock = 0,
         bool isNew = false,
-        bool isFeatured = false
+        bool isFeatured = false,
+        bool isSpotlight = false
     );
 }

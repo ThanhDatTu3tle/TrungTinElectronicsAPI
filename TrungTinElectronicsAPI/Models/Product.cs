@@ -43,6 +43,8 @@ namespace TrungTinElectronicsAPI.Models
         public bool IsNew { get; set; }
         public bool IsFeatured { get; set; }
 
+        public bool IsSpotlight { get; set; }
+
         public string? categoryName { get; set; }
         // Navigation property
         //public virtual required Category Category { get; set; }

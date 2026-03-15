@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
 using TrungTinElectronicsAPI.Data;
 using TrungTinElectronicsAPI.Models;
 
@@ -173,6 +174,41 @@ public class AuthController : ControllerBase
         return Ok(new { token = jwt });
     }
 
+    // =============================
+    // 🔹 API ĐĂNG NHẬP BẰNG TÀI KHOẢN FACEBOOK
+    // =============================
+    [HttpPost("facebook-login")]
+    public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginRequest request)
+    {
+        // Verify token với Facebook Graph API
+        using var httpClient = new HttpClient();
+        var response = await httpClient.GetStringAsync(
+            $"https://graph.facebook.com/me?fields=id,name,email,picture&access_token={request.Token}");
+
+        var fbUser = System.Text.Json.JsonSerializer.Deserialize<FacebookUserInfo>(response);
+        if (fbUser == null || string.IsNullOrEmpty(fbUser.Email))
+            return Unauthorized(new { message = "Invalid Facebook token" });
+
+        // Kiểm tra user trong DB (giống Google login)
+        var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == fbUser.Email);
+        if (user == null)
+        {
+            user = new User
+            {
+                Email = fbUser.Email,
+                FullName = fbUser.Name,
+                CreatedAt = DateTime.UtcNow,
+                Role = "User"
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+        }
+
+        // Tạo JWT (dùng chung hàm với Google login)
+        var jwt = GenerateJwtToken(user);
+        return Ok(new { token = jwt });
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> GetMe()
@@ -271,6 +307,23 @@ public class AuthController : ControllerBase
     public class GoogleLoginRequest
     {
         public string Token { get; set; } = string.Empty;
+    }
+
+    public class FacebookLoginRequest
+    {
+        public string Token { get; set; }
+    }
+
+    public class FacebookUserInfo
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("email")]
+        public string Email { get; set; }
     }
 
     public class UpdateProfileRequest

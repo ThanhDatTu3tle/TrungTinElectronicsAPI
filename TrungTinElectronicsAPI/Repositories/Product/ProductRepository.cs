@@ -25,7 +25,8 @@ public class ProductRepository : IProductRepository
         decimal? minPrice = null,
         decimal? maxPrice = null,
         bool? isNew = null,
-        bool? isFeatured = null)
+        bool? isFeatured = null,
+        bool? isSpotlight = null)
     {
         using var connection = new SqlConnection(_connectionString);
 
@@ -39,7 +40,8 @@ public class ProductRepository : IProductRepository
                 MinPrice = minPrice,
                 MaxPrice = maxPrice,
                 IsNew = isNew,
-                IsFeatured = isFeatured
+                IsFeatured = isFeatured,
+                IsSpotlight = isSpotlight
             },
             commandType: CommandType.StoredProcedure
         );
@@ -75,7 +77,8 @@ public class ProductRepository : IProductRepository
         string? brand = null,
         int stock = 0,
         bool isNew = false,
-        bool isFeatured = false)
+        bool isFeatured = false,
+        bool isSpotlight = false)
     {
         using var connection = new SqlConnection(_connectionString);
         var parameters = new DynamicParameters();
@@ -92,6 +95,7 @@ public class ProductRepository : IProductRepository
         parameters.Add("@Stock", stock);
         parameters.Add("@IsNew", isNew);
         parameters.Add("@IsFeatured", isFeatured);
+        parameters.Add("@IsSpotlight", isSpotlight);
 
         // output param
         parameters.Add("@NewProductId", dbType: DbType.Int32, direction: ParameterDirection.Output);

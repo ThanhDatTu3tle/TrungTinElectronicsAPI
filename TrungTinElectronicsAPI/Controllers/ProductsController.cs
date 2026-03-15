@@ -31,12 +31,13 @@ namespace TrungTinElectronicsAPI.Controllers
         [FromQuery] decimal? minPrice,
         [FromQuery] decimal? maxPrice,
         [FromQuery] bool? isNew,
-        [FromQuery] bool? isFeatured)
+        [FromQuery] bool? isFeatured,
+        [FromQuery] bool? isSpotlight)
         {
             try 
             {
                 var products = await _productRepository.GetAllProductsAsync(
-                    code, categoryId, brand, minPrice, maxPrice, isNew, isFeatured);
+                    code, categoryId, brand, minPrice, maxPrice, isNew, isFeatured, isSpotlight);
 
                 return Ok(new
                 {
@@ -101,13 +102,14 @@ namespace TrungTinElectronicsAPI.Controllers
             [FromQuery] string? brand,
             [FromQuery] int stock = 0,
             [FromQuery] bool isNew = false,
-            [FromQuery] bool isFeatured = false)
+            [FromQuery] bool isFeatured = false,
+            [FromQuery] bool isSpotlight = false)
         {
             try
             {
                 var newProductId = await _productRepository.CreateProductAsync(
                     categoryId, productName, description, price, imageUrl,
-                    code, discountPrice, currency, brand, stock, isNew, isFeatured);
+                    code, discountPrice, currency, brand, stock, isNew, isFeatured, isSpotlight);
 
                 return Ok(new
                 {
