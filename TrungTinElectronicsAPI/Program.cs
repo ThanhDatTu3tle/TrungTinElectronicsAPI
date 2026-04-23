@@ -1,11 +1,21 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Hangfire;
+using Hangfire.Dashboard;
+using Hangfire.SqlServer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 using System.Text;
+using TrungTinElectronics.Jobs;
+using TrungTinElectronics.Repositories;
+using TrungTinElectronics.Services;
 using TrungTinElectronicsAPI.Data;
 using TrungTinElectronicsAPI.Models;
+using TrungTinElectronicsAPI.Repositories;
+using TrungTinElectronicsAPI.Repositories.BulkImport;
 using TrungTinElectronicsAPI.Repositories.Category;
+using TrungTinElectronicsAPI.Repositories.Event;
 using TrungTinElectronicsAPI.Repositories.Product;
 using TrungTinElectronicsAPI.Services;
 
@@ -107,6 +117,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddScoped<OrderRepository>();
+builder.Services.AddScoped<OrderService>();
 //builder.Services.AddSwaggerGen();
 
 // Inject repository Product
@@ -115,10 +128,47 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 // Inject repository Category
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 
+// Inject repository Event
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+
 // Inject Cloudinary
 builder.Services.Configure<CloudinarySettings>(
     builder.Configuration.GetSection("CloudinarySettings"));
 builder.Services.AddScoped<CloudinaryService>();
+
+// Bulk import products
+builder.Services.AddScoped<IProductBulkImportRepository, ProductBulkImportRepository>();
+builder.Services.AddScoped<IProductBulkImportService, ProductBulkImportService>();
+
+// Jobs
+builder.Services.AddScoped<CancelExpiredOrdersJob>();
+
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Zero,
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true,
+        }
+    )
+);
+
+builder.Services.AddHangfireServer();
+
+var redisConn = await ConnectionMultiplexer.ConnectAsync(
+    builder.Configuration.GetConnectionString("Redis")!);
+builder.Services.AddSingleton<IConnectionMultiplexer>(redisConn);
+builder.Services.AddSingleton<RedisQueueService>();
+
+// Worker chạy nền xử lý payment queue
+builder.Services.AddHostedService<PaymentCallbackWorker>();
 
 var app = builder.Build();
 
@@ -128,6 +178,7 @@ var app = builder.Build();
 //    app.UseSwaggerUI();
 //}
 
+// 1. Middleware trước
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -143,4 +194,25 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// 2. Hangfire dashboard
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAllowAllFilter() }
+});
+
+// 3. Đăng ký Cron job SAU khi app đã build xong
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    RecurringJob.AddOrUpdate<CancelExpiredOrdersJob>(
+        recurringJobId: "cancel-expired-orders",
+        methodCall: job => job.ExecuteAsync(),
+        cronExpression: "*/5 * * * *"
+    );
+});
+
 app.Run();
+
+public class HangfireAllowAllFilter : IDashboardAuthorizationFilter
+{
+    public bool Authorize(DashboardContext context) => true;
+}

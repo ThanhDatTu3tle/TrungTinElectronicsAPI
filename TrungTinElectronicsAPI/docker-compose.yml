@@ -1,19 +1,17 @@
 ﻿version: "3.9"
-
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: sqlserver
     environment:
       ACCEPT_EULA: "Y"
-      SA_PASSWORD: "Thanhdat03!Pass123"
+      SA_PASSWORD: ${SA_PASSWORD}
     ports:
       - "1433:1433"
     volumes:
       - sql_data:/var/opt/mssql
-
   api:
-    build: .
+    build: ./backend/TrungTinElectronicsAPI
     container_name: trungtin-api
     depends_on:
       - sqlserver
@@ -21,8 +19,14 @@ services:
       - "5000:8080"
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      Jwt__Key: "super_super_secret_key_123456789"
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=TrungTinElectronicsDB;User Id=sa;Password=Thanhdat03!Pass123;TrustServerCertificate=True;"
-
+      ASPNETCORE_ENVIRONMENT: "Production"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: "trungtinelectronics"
+      Jwt__Audience: "trungtinelectronics"
+      ConnectionStrings__DefaultConnection: ${CONNECTION_STRING}
+      CloudinarySettings__CloudName: ${CLOUDINARY_CLOUD_NAME}
+      CloudinarySettings__ApiKey: ${CLOUDINARY_API_KEY}
+      CloudinarySettings__ApiSecret: ${CLOUDINARY_API_SECRET}
+      Google__ClientId: ${GOOGLE_CLIENT_ID}
 volumes:
   sql_data:

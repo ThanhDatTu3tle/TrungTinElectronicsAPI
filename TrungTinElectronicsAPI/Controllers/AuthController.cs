@@ -122,15 +122,15 @@ public class AuthController : ControllerBase
             });
 
         // 🎫 Tạo JWT token
-        var token = GenerateJwtToken(user);
+        var jwt = GenerateJwtToken(user);
 
         return Ok(new
         {
             message = "success",
             statusCode = "200",
             result = "Login successfully",
-            token,
-            user.Role
+            token = jwt,        // ← dùng jwt
+            role = user.Role
         });
     }
 
@@ -140,20 +140,50 @@ public class AuthController : ControllerBase
     [HttpPost("google-login")]
     public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
     {
-        var settings = new GoogleJsonWebSignature.ValidationSettings
+        string email, name;
+
+        try
         {
-            Audience = new List<string> { _config["Google:ClientId"] }
-        };
+            // ── Mobile: access token từ OAuth redirect ──
+            if (!string.IsNullOrEmpty(request.AccessToken))
+            {
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", request.AccessToken);
 
-        var payload = await GoogleJsonWebSignature.ValidateAsync(request.Token, settings);
+                var response = await httpClient.GetStringAsync(
+                    "https://www.googleapis.com/oauth2/v3/userinfo");
 
-        var email = payload.Email;
-        var name = payload.Name;
-        var avatar = payload.Picture;
+                var userInfo = System.Text.Json.JsonSerializer.Deserialize<GoogleUserInfo>(response);
+                if (userInfo == null || string.IsNullOrEmpty(userInfo.Email))
+                    return Unauthorized(new { message = "error", result = "Invalid Google access token" });
 
-        // Kiểm tra user trong DB
+                email = userInfo.Email;
+                name = userInfo.Name;
+            }
+            // ── Desktop: ID token từ GSI ──
+            else if (!string.IsNullOrEmpty(request.Token))
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new List<string> { _config["Google:ClientId"] }
+                };
+                var payload = await GoogleJsonWebSignature.ValidateAsync(request.Token, settings);
+                email = payload.Email;
+                name = payload.Name;
+            }
+            else
+            {
+                return BadRequest(new { message = "error", result = "Token is required" });
+            }
+        }
+        catch (Exception)
+        {
+            return Unauthorized(new { message = "error", result = "Invalid Google token" });
+        }
+
+        // ── Upsert user ──
         var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email);
-
         if (user == null)
         {
             user = new User
@@ -161,17 +191,35 @@ public class AuthController : ControllerBase
                 Email = email,
                 FullName = name,
                 CreatedAt = DateTime.UtcNow,
-                Role = "User" // default role
+                Role = "User"
             };
-
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
         }
 
-        // tạo JWT
         var jwt = GenerateJwtToken(user);
+        return Ok(new
+        {
+            message = "success",
+            statusCode = "200",
+            result = "Login successfully",
+            token = jwt,
+            role = user.Role
+        });
+    }
+    public class GoogleUserInfo
+    {
+        [JsonPropertyName("sub")]
+        public string Sub { get; set; }
 
-        return Ok(new { token = jwt });
+        [JsonPropertyName("email")]
+        public string Email { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("picture")]
+        public string Picture { get; set; }
     }
 
     // =============================
@@ -186,11 +234,8 @@ public class AuthController : ControllerBase
             $"https://graph.facebook.com/me?fields=id,name,email,picture&access_token={request.Token}");
 
         var fbUser = System.Text.Json.JsonSerializer.Deserialize<FacebookUserInfo>(response);
-        if (fbUser == null || string.IsNullOrEmpty(fbUser.Email))
-            return Unauthorized(new { message = "Invalid Facebook token" });
-
-        // Kiểm tra user trong DB (giống Google login)
-        var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == fbUser.Email);
+        var email = fbUser.Email ?? $"fb_{fbUser.Id}@facebook.com";
+        var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email);
         if (user == null)
         {
             user = new User
@@ -218,7 +263,7 @@ public class AuthController : ControllerBase
 
         var user = await _context.Users
             .Where(u => u.Id == int.Parse(userId))
-            .Select(u => new { u.Id, u.Username, u.Email, u.FullName, u.Phone, DateOfBirth = u.DateOfBirth.HasValue ? u.DateOfBirth.Value.ToString("yyyyMMdd") : null })
+            .Select(u => new { u.Id, u.Username, u.Email, u.Role, u.FullName, u.Phone, DateOfBirth = u.DateOfBirth.HasValue ? u.DateOfBirth.Value.ToString("yyyyMMdd") : null })
             .FirstOrDefaultAsync();
 
         if (user == null)
@@ -272,19 +317,18 @@ public class AuthController : ControllerBase
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // duy nhất
-            new Claim(ClaimTypes.Name, user.FullName ?? user.Email),   // fallback nếu FullName null
-            new Claim(ClaimTypes.Role, user.Role ?? "User")           // default role
-        };
-
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Name, user.FullName ?? user.Email),
+        new Claim(ClaimTypes.Role, user.Role ?? "User")
+    };
         var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],        // ← thêm
+            audience: _config["Jwt:Audience"],    // ← thêm
             claims: claims,
             expires: DateTime.UtcNow.AddHours(6),
             signingCredentials: creds);
-
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
@@ -307,6 +351,7 @@ public class AuthController : ControllerBase
     public class GoogleLoginRequest
     {
         public string Token { get; set; } = string.Empty;
+        public string? AccessToken { get; set; }
     }
 
     public class FacebookLoginRequest

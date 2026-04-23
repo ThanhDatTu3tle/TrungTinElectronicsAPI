@@ -111,8 +111,8 @@ public class ProductRepository : IProductRepository
 
         // Query the created product by its ID (assuming you have a method for this)
         var createdProduct = await connection.QueryFirstOrDefaultAsync<TrungTinElectronicsAPI.Models.Product>(
-            "SELECT * FROM Product WHERE Id = @Id",
-            new { Id = newProductId }
+            "SELECT * FROM Product WHERE ProductId  = @ProductId",
+            new { ProductId = newProductId }
         );
 
         // Return as IEnumerable to match interface

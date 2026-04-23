@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TrungTinElectronicsAPI.Models;
 using TrungTinElectronicsAPI.Models.DTOs;
 using TrungTinElectronicsAPI.Services;
 
@@ -12,6 +13,7 @@ namespace TrungTinElectronicsAPI.Controllers
     {
         private readonly IProductRepository _productRepository;
         private readonly CloudinaryService _cloudinaryService;
+        private readonly IProductBulkImportService _bulkImportService;
 
         public ProductsController(
             IProductRepository productRepository,
@@ -90,26 +92,14 @@ namespace TrungTinElectronicsAPI.Controllers
 
         // POST: api/Products/CreateProduct
         [HttpPost("CreateProduct")]
-        public async Task<IActionResult> CreateProduct(
-            [FromQuery] string? categoryId,
-            [FromQuery] string? productName,
-            [FromQuery] string? description,
-            [FromQuery] decimal? price,
-            [FromQuery] string? imageUrl,
-            [FromQuery] string? code,
-            [FromQuery] decimal? discountPrice,
-            [FromQuery] string? currency,
-            [FromQuery] string? brand,
-            [FromQuery] int stock = 0,
-            [FromQuery] bool isNew = false,
-            [FromQuery] bool isFeatured = false,
-            [FromQuery] bool isSpotlight = false)
+        public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequest req)
         {
             try
             {
                 var newProductId = await _productRepository.CreateProductAsync(
-                    categoryId, productName, description, price, imageUrl,
-                    code, discountPrice, currency, brand, stock, isNew, isFeatured, isSpotlight);
+                    req.CategoryId, req.ProductName, req.Description, req.Price, req.ImageUrl,
+                    req.Code, req.DiscountPrice, req.Currency, req.Brand,
+                    req.Stock, req.IsNew, req.IsFeatured, req.IsSpotlight);
 
                 return Ok(new
                 {
@@ -156,6 +146,31 @@ namespace TrungTinElectronicsAPI.Controllers
             {
                 return BadRequest(new { error = "Upload failed.", message = ex.Message });
             }
+        }
+
+        [HttpPost("BulkImport")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> BulkImport(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Vui lòng chọn file .xlsx" });
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (ext != ".xlsx")
+                return BadRequest(new { message = "Chỉ hỗ trợ file .xlsx" });
+
+            const long maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.Length > maxSize)
+                return BadRequest(new { message = "File không được vượt quá 10MB" });
+
+            var result = await _bulkImportService.ImportAsync(file);
+
+            return Ok(new
+            {
+                message = "success",
+                result.SuccessCount,
+                result.Errors
+            });
         }
     }
 }

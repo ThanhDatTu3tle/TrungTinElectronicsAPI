@@ -45,6 +45,13 @@ namespace TrungTinElectronicsAPI.Models
 
         public bool IsSpotlight { get; set; }
 
+        public int? EventId { get; set; }
+        public string? EventName { get; set; }    
+        public decimal? EventDiscountPercent { get; set; } 
+        public string? EventColorTheme { get; set; }      
+        public DateTime? EventStartDate { get; set; }   
+        public DateTime? EventEndDate { get; set; }    
+
         public string? categoryName { get; set; }
         // Navigation property
         //public virtual required Category Category { get; set; }

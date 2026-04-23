@@ -35,7 +35,9 @@ namespace TrungTinElectronicsAPI.Services
             var uploadParams = new ImageUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = "products"
+                Folder = "products",
+                UniqueFilename = true,
+                UseFilename = false
             };
 
             var result = await _cloudinary.UploadAsync(uploadParams);
