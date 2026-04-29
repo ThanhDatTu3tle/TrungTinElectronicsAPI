@@ -161,12 +161,6 @@ builder.Services.AddHangfire(config => config
     )
 );
 
-RecurringJob.AddOrUpdate<NotificationCleanupJob>(
-    "notification-cleanup",
-    job => job.Execute(),
-    Cron.Daily(3, 0)
-);
-
 builder.Services.AddHangfireServer();
 
 var redisConn = await ConnectionMultiplexer.ConnectAsync(
@@ -206,6 +200,13 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = new[] { new HangfireAllowAllFilter() }
 });
+
+// Đăng ký recurring jobs
+RecurringJob.AddOrUpdate<NotificationCleanupJob>(
+    "notification-cleanup",
+    job => job.Execute(),
+    Cron.Daily(3, 0)
+);
 
 // 3. Đăng ký Cron job SAU khi app đã build xong
 app.Lifetime.ApplicationStarted.Register(() =>
