@@ -207,6 +207,8 @@ RecurringJob.AddOrUpdate<NotificationCleanupJob>(
     job => job.Execute(),
     Cron.Daily(3, 0)
 );
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // 3. Đăng ký Cron job SAU khi app đã build xong
 app.Lifetime.ApplicationStarted.Register(() =>
