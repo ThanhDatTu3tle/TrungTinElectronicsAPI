@@ -170,6 +170,8 @@ builder.Services.AddSingleton<RedisQueueService>();
 
 // Worker chạy nền xử lý payment queue
 builder.Services.AddHostedService<PaymentCallbackWorker>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 var app = builder.Build();
 
@@ -207,8 +209,6 @@ RecurringJob.AddOrUpdate<NotificationCleanupJob>(
     job => job.Execute(),
     Cron.Daily(3, 0)
 );
-builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // 3. Đăng ký Cron job SAU khi app đã build xong
 app.Lifetime.ApplicationStarted.Register(() =>
