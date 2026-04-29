@@ -14,15 +14,18 @@ public class PaymentCallbackWorker : BackgroundService
     private readonly RedisQueueService _queue;
     private readonly IConfiguration _config;
     private readonly ILogger<PaymentCallbackWorker> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public PaymentCallbackWorker(
         RedisQueueService queue,
         IConfiguration config,
-        ILogger<PaymentCallbackWorker> logger)
+        ILogger<PaymentCallbackWorker> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _queue = queue;
         _config = config;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -142,6 +145,14 @@ public class PaymentCallbackWorker : BackgroundService
             // 3. Invalidate revenue cache
             await _queue.DeleteCacheAsync("revenue:summary:month");
             await _queue.DeleteCacheAsync($"revenue:daily:{DateTime.Now:yyyy-MM-dd}");
+
+            // 4. Tạo notification cho admin
+            using var scope = _scopeFactory.CreateScope();
+            var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+            await notificationService.CreatePaymentNotificationAsync(
+                orderId: job.OrderID,
+                amount: job.Amount
+            );
         }
         catch
         {

@@ -11,6 +11,7 @@ using TrungTinElectronics.Jobs;
 using TrungTinElectronics.Repositories;
 using TrungTinElectronics.Services;
 using TrungTinElectronicsAPI.Data;
+using TrungTinElectronicsAPI.Jobs;
 using TrungTinElectronicsAPI.Models;
 using TrungTinElectronicsAPI.Repositories;
 using TrungTinElectronicsAPI.Repositories.BulkImport;
@@ -158,6 +159,12 @@ builder.Services.AddHangfire(config => config
             DisableGlobalLocks = true,
         }
     )
+);
+
+RecurringJob.AddOrUpdate<NotificationCleanupJob>(
+    "notification-cleanup",
+    job => job.Execute(),
+    Cron.Daily(3, 0)
 );
 
 builder.Services.AddHangfireServer();

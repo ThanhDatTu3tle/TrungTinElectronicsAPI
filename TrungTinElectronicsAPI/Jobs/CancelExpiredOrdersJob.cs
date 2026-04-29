@@ -1,5 +1,6 @@
-﻿using System.Data;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
+using System.Data;
+using TrungTinElectronicsAPI.Services;
 
 namespace TrungTinElectronics.Jobs;
 
@@ -7,13 +8,17 @@ public class CancelExpiredOrdersJob
 {
     private readonly string _connectionString;
     private readonly ILogger<CancelExpiredOrdersJob> _logger;
+    private readonly INotificationService _notificationService;
+
 
     public CancelExpiredOrdersJob(
         IConfiguration config,
-        ILogger<CancelExpiredOrdersJob> logger)
+        ILogger<CancelExpiredOrdersJob> logger,
+        INotificationService notificationService)
     {
         _connectionString = config.GetConnectionString("DefaultConnection")!;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task ExecuteAsync()
@@ -75,6 +80,9 @@ public class CancelExpiredOrdersJob
         if (!string.IsNullOrEmpty(error))
             _logger.LogWarning("Hủy đơn {OrderID} lỗi: {Error}", orderId, error);
         else
+        {
             _logger.LogInformation("Đã hủy đơn {OrderID}", orderId);
+            await _notificationService.CreateCancelNotificationAsync(orderId);
+        }
     }
 }
