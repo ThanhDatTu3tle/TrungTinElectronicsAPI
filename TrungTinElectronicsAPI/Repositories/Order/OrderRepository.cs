@@ -116,7 +116,8 @@ public class OrderRepository
                o.Note,
                o.PaidAt,
                o.CreatedAt,
-               (SELECT COUNT(*) FROM dbo.Order_Items oi WHERE oi.OrderID = o.OrderID) AS ItemCount
+               (SELECT COUNT(*) FROM dbo.Order_Items oi WHERE oi.OrderID = o.OrderID) AS ItemCount,
+               o.DeliveredAt
         FROM dbo.Orders o
         INNER JOIN dbo.Users u ON o.UserID = u.Id
         WHERE (@Status IS NULL OR o.Status = @Status)
@@ -151,9 +152,30 @@ public class OrderRepository
                 PaidAt = reader.IsDBNull(8) ? null : reader.GetDateTime(8),
                 CreatedAt = reader.GetDateTime(9),
                 ItemCount = reader.GetInt32(10),
+                DeliveredAt = reader.IsDBNull(11) ? null : reader.GetDateTime(11),
             });
         }
 
         return (orders, totalCount);
+    }
+
+    public async Task UpdateOrderStatusAsync(int orderId, string status)
+    {
+        const string sql = """
+        UPDATE dbo.Orders 
+        SET Status = @Status, 
+            PaidAt = CASE WHEN @Status = 'paid' THEN GETDATE() ELSE PaidAt END,
+            DeliveredAt = CASE WHEN @Status = 'delivered' THEN GETDATE() ELSE DeliveredAt END,
+            UpdatedAt = GETDATE()
+        WHERE OrderID = @OrderID
+        """;
+
+        await using var conn = new SqlConnection(_connectionString);
+        await using var cmd = new SqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@OrderID", orderId);
+        cmd.Parameters.AddWithValue("@Status", status);
+
+        await conn.OpenAsync();
+        await cmd.ExecuteNonQueryAsync();
     }
 }

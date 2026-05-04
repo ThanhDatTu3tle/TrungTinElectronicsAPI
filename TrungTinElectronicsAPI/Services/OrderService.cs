@@ -46,6 +46,23 @@ public class OrderService
         };
     }
 
+    public async Task<(bool Success, int OrderID, string? ErrorMessage)> UpdateOrderStatusAsync(int orderId, string status)
+    {
+        var validStatuses = new[] { "pending_payment", "paid", "cancelled", "payment_failed", "delivered" };
+        if (!validStatuses.Contains(status))
+            return (false, 0, "Trạng thái không hợp lệ");
+
+        var order = await _repo.GetOrderDetailAsync(orderId);
+        if (order is null)
+            return (false, 0, "Không tìm thấy đơn hàng");
+
+        if (status == "delivered" && order.Status != "paid")
+            return (false, 0, "Chỉ đơn đã thanh toán mới giao hàng được");
+
+        await _repo.UpdateOrderStatusAsync(orderId, status);
+        return (true, orderId, null);
+    }
+
     private static CreateOrderResponse Fail(string msg) =>
         new() { Success = false, ErrorMessage = msg };
 

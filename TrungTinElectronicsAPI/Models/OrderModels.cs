@@ -53,6 +53,12 @@ public class OrderSummary
     public DateTime? PaidAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public int ItemCount { get; set; }
+    public DateTime? DeliveredAt { get; set; }
+}
+
+public class UpdateOrderStatusRequest
+{
+    public string Status { get; set; } = string.Empty;
 }
 
 // Job payload cho Redis Queue

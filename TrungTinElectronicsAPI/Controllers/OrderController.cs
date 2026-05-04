@@ -103,4 +103,14 @@ public class OrderController : ControllerBase
             totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
         });
     }
+
+    // PUT /api/order/{id}/status
+    [HttpPut("{id:int}/status")]
+    public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request)
+    {
+        var result = await _orderService.UpdateOrderStatusAsync(id, request.Status);
+        if (!result.Success)
+            return BadRequest(new { result.ErrorMessage });
+        return Ok(new { message = "Cập nhật trạng thái thành công", result.OrderID });
+    }
 }
