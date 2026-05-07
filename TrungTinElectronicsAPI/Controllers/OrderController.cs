@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using TrungTinElectronics.Models;
 using TrungTinElectronics.Repositories;
@@ -88,6 +89,7 @@ public class OrderController : ControllerBase
 
     // GET /api/order?status=paid&page=1&pageSize=10
     [HttpGet]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> GetAllOrders(
         [FromQuery] string? status,
         [FromQuery] int page = 1,
@@ -106,6 +108,7 @@ public class OrderController : ControllerBase
 
     // PUT /api/order/{id}/status
     [HttpPut("{id:int}/status")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request)
     {
         var result = await _orderService.UpdateOrderStatusAsync(id, request.Status);
@@ -116,6 +119,7 @@ public class OrderController : ControllerBase
 
     // POST /api/order/{id}/claim-paid
     [HttpPost("{id:int}/claim-paid")]
+    [Authorize]
     public async Task<IActionResult> ClaimPaid(int id)
     {
         var (success, error) = await _orderService.ClaimPaidAsync(id);
