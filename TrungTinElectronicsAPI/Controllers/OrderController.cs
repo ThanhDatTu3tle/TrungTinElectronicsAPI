@@ -113,4 +113,14 @@ public class OrderController : ControllerBase
             return BadRequest(new { result.ErrorMessage });
         return Ok(new { message = "Cập nhật trạng thái thành công", result.OrderID });
     }
+
+    // POST /api/order/{id}/claim-paid
+    [HttpPost("{id:int}/claim-paid")]
+    public async Task<IActionResult> ClaimPaid(int id)
+    {
+        var (success, error) = await _orderService.ClaimPaidAsync(id);
+        if (!success)
+            return BadRequest(new { errorMessage = error });
+        return Ok(new { message = "Đã gửi thông báo cho shop" });
+    }
 }

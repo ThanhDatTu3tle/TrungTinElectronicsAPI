@@ -13,5 +13,6 @@ namespace TrungTinElectronicsAPI.Services
         Task<Notification> CreatePaymentNotificationAsync(int orderId, decimal amount);
         Task<Notification> CreateCancelNotificationAsync(int orderId);
         Task<int> CleanupOldNotificationsAsync(int retentionDays = 90);
+        Task<Notification> CreateClaimPaidNotificationAsync(int orderId);
     }
 }

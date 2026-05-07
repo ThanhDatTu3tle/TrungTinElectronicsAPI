@@ -86,5 +86,19 @@ namespace TrungTinElectronicsAPI.Services
         {
             return await _notificationRepository.CleanupOldNotificationsAsync(retentionDays);
         }
+
+        public async Task<Notification> CreateClaimPaidNotificationAsync(int orderId)
+        {
+            var notification = new Notification
+            {
+                Title = $"Khách báo đã thanh toán #{orderId}",
+                Message = $"Khách hàng báo đã chuyển khoản cho đơn #{orderId}. Vui lòng kiểm tra và xác nhận.",
+                Type = "claim_paid",
+                OrderId = orderId,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            return await _notificationRepository.CreateAsync(notification);
+        }
     }
 }

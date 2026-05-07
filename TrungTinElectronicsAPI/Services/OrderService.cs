@@ -48,7 +48,7 @@ public class OrderService
 
     public async Task<(bool Success, int OrderID, string? ErrorMessage)> UpdateOrderStatusAsync(int orderId, string status)
     {
-        var validStatuses = new[] { "pending_payment", "paid", "cancelled", "payment_failed", "delivered" };
+        var validStatuses = new[] { "pending_payment", "confirmed", "paid", "cancelled", "payment_failed", "delivered" };
         if (!validStatuses.Contains(status))
             return (false, 0, "Trạng thái không hợp lệ");
 
@@ -56,11 +56,33 @@ public class OrderService
         if (order is null)
             return (false, 0, "Không tìm thấy đơn hàng");
 
+        // Flow validation
+        if (status == "confirmed" && order.Status != "pending_payment")
+            return (false, 0, "Chỉ đơn chờ xác nhận mới được confirm");
+
+        if (status == "paid" && order.Status != "confirmed")
+            return (false, 0, "Chỉ đơn đã xác nhận mới được thanh toán");
+
         if (status == "delivered" && order.Status != "paid")
             return (false, 0, "Chỉ đơn đã thanh toán mới giao hàng được");
 
         await _repo.UpdateOrderStatusAsync(orderId, status);
         return (true, orderId, null);
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> ClaimPaidAsync(int orderId)
+    {
+        var order = await _repo.GetOrderDetailAsync(orderId);
+        if (order is null)
+            return (false, "Không tìm thấy đơn hàng");
+
+        if (order.Status != "confirmed")
+            return (false, "Đơn hàng chưa được xác nhận hoặc đã thanh toán");
+
+        // Tạo notification cho admin
+        await _notificationService.CreateClaimPaidNotificationAsync(orderId);
+
+        return (true, null);
     }
 
     private static CreateOrderResponse Fail(string msg) =>
