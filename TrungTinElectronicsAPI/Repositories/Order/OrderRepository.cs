@@ -53,6 +53,7 @@ public class OrderRepository
         const string sql = """
             SELECT
                 o.OrderID,
+                o.UserID,
                 o.Status,
                 o.TotalAmount,
                 o.ExpiredAt,
@@ -83,6 +84,7 @@ public class OrderRepository
             order ??= new OrderDetailResponse
             {
                 OrderID = reader.GetInt32(0),
+                UserID = reader.IsDBNull(1) ? null : reader.GetInt32(1),
                 Status = reader.GetString(1),
                 TotalAmount = reader.GetDecimal(2),
                 ExpiredAt = reader.GetDateTime(3),

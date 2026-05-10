@@ -173,6 +173,10 @@ builder.Services.AddHostedService<PaymentCallbackWorker>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
+//
+builder.Services.AddScoped<PushSubscriptionRepository>();
+builder.Services.AddScoped<WebPushService>();
+
 var app = builder.Build();
 
 //if (app.Environment.IsDevelopment())

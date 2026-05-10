@@ -24,6 +24,7 @@ public class CreateOrderResponse
 public class OrderDetailResponse
 {
     public int OrderID { get; set; }
+    public int? UserID { get; set; }
     public string Status { get; set; } = "";
     public decimal TotalAmount { get; set; }
     public DateTime ExpiredAt { get; set; }

@@ -8,11 +8,13 @@ public class OrderService
 {
     private readonly OrderRepository _repo;
     private readonly INotificationService _notificationService;
+    private readonly WebPushService _webPushService;
 
-    public OrderService(OrderRepository repo, INotificationService notificationService)
+    public OrderService(OrderRepository repo, INotificationService notificationService, WebPushService webPushService)
     {
         _repo = repo;
         _notificationService = notificationService;
+        _webPushService = webPushService;
     }
 
     public async Task<CreateOrderResponse> CreateOrderAsync(CreateOrderRequest request)
@@ -56,7 +58,6 @@ public class OrderService
         if (order is null)
             return (false, 0, "Không tìm thấy đơn hàng");
 
-        // Flow validation
         if (status == "confirmed" && order.Status != "pending_payment")
             return (false, 0, "Chỉ đơn chờ xác nhận mới được confirm");
 
@@ -67,6 +68,23 @@ public class OrderService
             return (false, 0, "Chỉ đơn đã thanh toán mới giao hàng được");
 
         await _repo.UpdateOrderStatusAsync(orderId, status);
+
+        // Gửi Web Push cho user
+        if (order.UserID is not null and > 0)
+        {
+            var (title, message, url) = status switch
+            {
+                "confirmed" => ("Đơn hàng đã xác nhận", $"Đơn hàng #{orderId} đã được shop xác nhận. Vui lòng thanh toán.", $"/invoice/{orderId}"),
+                "paid" => ("Thanh toán thành công", $"Đơn hàng #{orderId} đã được xác nhận thanh toán.", $"/payment-result?orderId={orderId}&status=success"),
+                "delivered" => ("Đơn hàng đã giao", $"Đơn hàng #{orderId} đã được giao thành công.", $"/invoice/{orderId}"),
+                "cancelled" => ("Đơn hàng bị hủy", $"Đơn hàng #{orderId} đã bị hủy.", $"/invoice/{orderId}"),
+                _ => ((string?)null, (string?)null, (string?)null)
+            };
+
+            if (title is not null)
+                await _webPushService.SendToUserAsync(order.UserID.Value, title, message!, url);
+        }
+
         return (true, orderId, null);
     }
 
