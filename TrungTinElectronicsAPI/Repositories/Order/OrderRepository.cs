@@ -121,7 +121,7 @@ public class OrderRepository
                (SELECT COUNT(*) FROM dbo.Order_Items oi WHERE oi.OrderID = o.OrderID) AS ItemCount,
                o.DeliveredAt
         FROM dbo.Orders o
-        INNER JOIN dbo.Users u ON o.UserID = u.Id
+        LEFT JOIN dbo.Users u ON o.UserID = u.Id
         WHERE (@Status IS NULL OR o.Status = @Status)
         ORDER BY o.CreatedAt DESC
         OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
@@ -145,7 +145,7 @@ public class OrderRepository
             orders.Add(new OrderSummary
             {
                 OrderID = reader.GetInt32(1),
-                UserID = reader.GetInt32(2),
+                UserID = reader.IsDBNull(2) ? null : reader.GetInt32(2),
                 FullName = reader.IsDBNull(3) ? null : reader.GetString(3),
                 Email = reader.IsDBNull(4) ? null : reader.GetString(4),
                 Status = reader.GetString(5),

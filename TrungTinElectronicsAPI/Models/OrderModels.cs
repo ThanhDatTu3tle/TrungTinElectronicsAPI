@@ -45,7 +45,7 @@ public class OrderItemDetail
 public class OrderSummary
 {
     public int OrderID { get; set; }
-    public int UserID { get; set; }
+    public int? UserID { get; set; }
     public string? FullName { get; set; }
     public string? Email { get; set; }
     public string Status { get; set; } = string.Empty;
